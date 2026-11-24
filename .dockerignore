@@ -1,0 +1,15 @@
+.git
+node_modules
+venv
+.venv
+scratch
+dist
+downloads
+__pycache__
+.pytest_cache
+*.pyc
+.coverage
+htmlcov
+.env
+*.env.local
+.DS_Store

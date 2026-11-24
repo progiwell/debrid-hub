@@ -1,0 +1,22 @@
+{
+  "name": "debrid-hub",
+  "version": "0.2.0",
+  "private": true,
+  "description": "TypeScript and Tailwind CSS frontend tooling for Debrid Hub",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build:ext": "node scripts/build_frontend.mjs --target=ext",
+    "build:server": "node scripts/build_frontend.mjs --target=server",
+    "build": "npm run build:ext && npm run build:server",
+    "test:ext": "node extension/tests/test_url_parser.js && node extension/tests/test_popup_filter.js && node extension/tests/test_settings_ux.js && node extension/tests/test_content.js",
+    "watch": "node scripts/build_frontend.mjs --watch"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.3.5",
+    "@types/chrome": "^0.3.7",
+    "@types/node": "^26.6.6",
+    "esbuild": "^0.28.2",
+    "tailwindcss": "^4.3.5",
+    "typescript": "^7.0.2"
+  }
+}

@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Debrid Hub</title>
+  <link rel="stylesheet" href="/static/dashboard.css?v={{ commit }}">
+</head>
+<body>
+  <div class="w-full max-w-[880px] bg-[var(--surface)] border border-[var(--border)] rounded-xl p-6 shadow-xl">
+    <header class="flex justify-between items-center border-b border-[var(--border)] pb-4 mb-5 flex-wrap gap-3">
+      <div class="flex items-center gap-2.5">
+        <h1 class="m-0 text-xl font-bold text-[var(--heading)] flex items-center gap-2 tracking-tight">⚡ Debrid Hub</h1>
+      </div>
+      <nav class="flex gap-2">
+        <button type="button" class="nav-tab active" data-tab="jobs">
+          📊 Jobs <span id="queue-badge" class="bg-white/20 px-1.5 py-0.5 rounded-full text-[11px]">0</span>
+        </button>
+        <button type="button" class="nav-tab" data-tab="add">
+          📥 Add
+        </button>
+        <button type="button" class="nav-tab" data-tab="settings">
+          ⚙️ Settings
+        </button>
+      </nav>
+    </header>
+
+    <div id="dl-alert" class="mb-4 text-xs hidden"></div>
+
+    <!-- Tab 1: Jobs Queue -->
+    <section id="tab-jobs" class="tab-content active">
+      <div class="flex justify-between items-center mb-4 flex-wrap gap-2.5">
+        <div class="flex items-center gap-2 flex-wrap" role="group" aria-label="Filter queue by status">
+          <button type="button" class="summary-pill" id="filter-active-btn" data-filter="active" aria-pressed="false" title="Filter active downloads">⚡ Active: <span id="stat-active-count">0</span></button>
+          <button type="button" class="summary-pill" id="filter-completed-btn" data-filter="completed" aria-pressed="false" title="Filter completed downloads">✅ Completed: <span id="stat-completed-count">0</span></button>
+          <button type="button" class="summary-pill" id="filter-failed-btn" data-filter="failed" aria-pressed="false" title="Filter failed downloads">⚠️ Failed: <span id="stat-failed-count">0</span></button>
+        </div>
+        <div class="flex items-center gap-2 flex-wrap">
+          <label class="m-0 text-xs flex items-center gap-1.5 cursor-pointer font-medium" title="Real-time status streaming via Server-Sent Events (SSE)">
+            <input type="checkbox" id="auto-refresh" checked> Live updates
+          </label>
+          <button type="button" id="btn-refresh" class="btn-secondary btn-sm"><span id="refresh-icon" class="spin-icon">🔄</span> <span>Refresh</span></button>
+          <button type="button" id="btn-clear-finished" class="btn-secondary btn-sm">🧹 Clear Finished</button>
+          <button type="button" id="btn-clear-all" class="btn-danger btn-sm">🗑️ Clear All</button>
+        </div>
+      </div>
+
+      <div id="jobs-container">
+        <div class="empty-state">Loading jobs...</div>
+      </div>
+    </section>
+
+    <!-- Tab 2: Add Downloads -->
+    <section id="tab-add" class="tab-content">
+      <div class="bg-[var(--card-bg)] border border-[var(--border)] rounded-lg p-4 mb-5">
+        <h3 class="m-0 mb-3 text-sm font-semibold text-[var(--heading)] flex items-center gap-1.5">➕ Add to Debrid Hub</h3>
+        <form id="quick-download-form">
+          <div class="flex gap-2.5 flex-wrap">
+            <input type="text" id="dl-url" class="flex-1 min-w-[240px]" placeholder="Paste Magnet URI (magnet:?...) or file hoster link..." required>
+            <input type="text" id="dl-subfolder" class="sm:w-[180px] sm:flex-none" placeholder="Subfolder (optional)">
+            <button type="submit" id="btn-submit-dl" class="btn-primary shrink-0">🚀 Send to Debrid Hub</button>
+          </div>
+        </form>
+        <div id="torrent-dropzone" class="torrent-dropzone">
+          <input type="file" id="torrent-file-input" accept=".torrent" class="hidden">
+          <span class="text-base">📁</span>
+          <span>Drag &amp; drop <strong class="text-[var(--heading)]">.torrent</strong> file here, or <button type="button" class="bg-transparent border-0 p-0 text-[var(--info)] underline font-semibold text-[13px] cursor-pointer" id="btn-browse-torrent">browse</button></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tab 3: Settings -->
+    <section id="tab-settings" class="tab-content">
+      <h1 class="text-lg font-bold mt-0 mb-4 text-[var(--heading)]">⚙️ Debrid Hub Settings</h1>
+      <form id="settings-form">
+        <div class="mb-4">
+          <label for="provider">Debrid Provider</label>
+          <select id="provider">
+            <option value="realdebrid">Real-Debrid</option>
+            <option value="torbox">TorBox (Coming Soon)</option>
+            <option value="alldebrid">AllDebrid (Coming Soon)</option>
+          </select>
+        </div>
+
+        <div class="mb-4">
+          <label class="block mb-1.5 font-semibold text-[13px]">Debrid API Key / Token</label>
+
+          <!-- Read-Only Key Status Card (default when key exists) -->
+          <div id="key-card" class="hidden bg-[var(--card-bg)] border border-[var(--border)] rounded-lg p-3 flex justify-between items-center gap-3">
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold bg-[var(--success-bg)] text-[var(--success)]">
+                  <span class="w-1.5 h-1.5 rounded-full bg-[var(--success)]"></span>
+                  Active
+                </span>
+                <code id="active-key-masked" class="text-xs font-mono text-[var(--heading)] bg-[var(--bg)] px-2 py-0.5 rounded border border-[var(--border)] truncate">••••••••</code>
+              </div>
+              <small class="block mt-1 text-[var(--text-muted)] text-[11px]">Token saved in settings.json</small>
+            </div>
+            <button type="button" id="btn-edit-key" class="btn-secondary btn-sm shrink-0">
+              ✏️ Change Key
+            </button>
+          </div>
+
+          <!-- Edit Mode Input Box (shown when changing key or first setup) -->
+          <div id="key-edit-box" class="hidden">
+            <div class="flex gap-2">
+              <div class="relative flex-1">
+                <input
+                  type="password"
+                  id="api-key"
+                  class="pr-10"
+                  placeholder="Paste new Real-Debrid API token..."
+                  autocomplete="off"
+                  spellcheck="false"
+                >
+                <button
+                  type="button"
+                  id="btn-toggle-key-visibility"
+                  class="absolute right-2.5 top-1/2 -translate-y-1/2 text-sm text-[var(--text-muted)] hover:text-[var(--heading)] bg-transparent border-0 p-1 cursor-pointer"
+                  title="Toggle token visibility"
+                >
+                  👁️
+                </button>
+              </div>
+              <button type="button" id="btn-cancel-edit-key" class="btn-secondary btn-sm shrink-0 hidden">
+                Cancel
+              </button>
+            </div>
+            <small class="block mt-1 text-[var(--text-muted)] text-xs">
+              Found at <a href="https://real-debrid.com/apitoken" target="_blank" rel="noopener noreferrer" class="text-[var(--info)] underline">real-debrid.com/apitoken</a>
+            </small>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+          <div>
+            <label for="max-connections">Download Threads</label>
+            <input type="number" id="max-connections" min="1" max="32" value="16">
+            <small class="block mt-1 text-[var(--text-muted)] text-xs">Parallel connections per download to maximize speed (1–16, recommended: 16).</small>
+          </div>
+          <div>
+            <label for="concurrency">Max Concurrent Downloads</label>
+            <input type="number" id="concurrency" min="1" max="10" value="3">
+            <small class="block mt-1 text-[var(--text-muted)] text-xs">Maximum number of distinct files downloading at the same time (1–10).</small>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2.5 mb-3">
+          <input type="checkbox" id="auto-extract" class="w-4 h-4 cursor-pointer">
+          <label for="auto-extract" class="m-0 font-semibold text-[13px] cursor-pointer">Auto-Extract RAR/7z/ZIP Archives</label>
+        </div>
+
+        <div class="flex items-center gap-2.5 mb-3">
+          <input type="checkbox" id="cleanup-extract" class="w-4 h-4 cursor-pointer">
+          <label for="cleanup-extract" class="m-0 font-semibold text-[13px] cursor-pointer">Delete Archives After Extraction</label>
+        </div>
+
+        <div class="flex gap-3 mt-6">
+          <button type="button" id="btn-test" class="btn-secondary">🔍 Test Connection</button>
+          <button type="submit" id="btn-save" class="btn-primary">💾 Save Settings</button>
+        </div>
+      </form>
+      <div id="status-msg"></div>
+    </section>
+
+    <footer class="mt-8 pt-4 border-t border-[var(--border)] text-xs text-[var(--text-muted)] flex justify-between items-center">
+      <span>Debrid Hub v{{ version }} (<code class="bg-[var(--bg)] px-1 py-0.5 rounded text-[11px] font-mono text-[var(--heading)]">{{ commit }}</code>)</span>
+      <a href="https://github.com/progiwell/debrid-hub" target="_blank" rel="noopener noreferrer" class="text-[var(--text-muted)] hover:text-[var(--info)] transition-colors flex items-center gap-1">
+        GitHub
+      </a>
+    </footer>
+  </div>
+
+  <script src="/static/dashboard.js?v={{ commit }}"></script>
+</body>
+</html>

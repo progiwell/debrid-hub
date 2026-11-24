@@ -1,0 +1,49 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+.venv/
+env/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Environment & Secrets
+.env
+*.env.local
+
+# Ephemeral agent worktrees & scratchpads
+scratch/
+TASK.md
+TASK_STATUS.md
+
+# OS & Editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Local downloads test dir
+downloads/
+
+# Node / Frontend Tooling & Compiled Bundles (rebuilt on deploy / CI)
+node_modules
+node_modules/
+dist/
+/extension/url_parser.js
+/extension/background.js
+/extension/content.js
+/extension/popup.js
+/extension/popup.css
+/extension/firefox/url_parser.js
+/extension/firefox/background.js
+/extension/firefox/content.js
+/extension/firefox/popup.html
+/extension/firefox/popup.js
+/extension/firefox/popup.css
+/server/app/static/dashboard.js
+/server/app/static/dashboard.css

@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "Debrid Hub",
+  "version": "0.2.0",
+  "description": "Send Magnet links, .torrent files, Info-Hashes, and File Hoster URLs into Debrid Hub.",
+  "permissions": [
+    "contextMenus",
+    "storage",
+    "notifications",
+    "alarms",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Debrid Hub"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

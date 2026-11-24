@@ -1,0 +1,385 @@
+@import "tailwindcss";
+@source "../popup.html";
+@source "./**/*.ts";
+
+:root {
+  --bg: #ffffff;
+  --card-bg: #f8fafc;
+  --text: #0f172a;
+  --text-muted: #64748b;
+  --border: #e2e8f0;
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --btn-secondary-bg: #f1f5f9;
+  --btn-secondary-hover: #e2e8f0;
+  --success-bg: #ecfdf5;
+  --success-text: #065f46;
+  --error-bg: #fef2f2;
+  --error-text: #991b1b;
+  --info-bg: #eff6ff;
+  --info-text: #1e40af;
+  --amber-bg: #fffbeb;
+  --amber-text: #92400e;
+  --purple-bg: #f5f3ff;
+  --purple-text: #5b21b6;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f172a;
+    --card-bg: #1e293b;
+    --text: #f8fafc;
+    --text-muted: #94a3b8;
+    --border: #334155;
+    --primary: #3b82f6;
+    --primary-hover: #2563eb;
+    --btn-secondary-bg: #1e293b;
+    --btn-secondary-hover: #334155;
+    --success-bg: #064e3b;
+    --success-text: #a7f3d0;
+    --error-bg: #7f1d1d;
+    --error-text: #fecaca;
+    --info-bg: #1e3a8a;
+    --info-text: #bfdbfe;
+    --amber-bg: #78350f;
+    --amber-text: #fde68a;
+    --purple-bg: #4c1d95;
+    --purple-text: #ddd6fe;
+  }
+}
+
+@layer base {
+  body {
+    @apply w-[356px] m-0 p-3.5 box-border antialiased;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+
+  label {
+    @apply block text-[11px] font-semibold mb-1;
+  }
+
+  input,
+  textarea {
+    @apply w-full box-border px-2.5 py-1.5 text-xs rounded-md border outline-none transition-colors;
+    border-color: var(--border);
+    background: var(--bg);
+    color: var(--text);
+    font-family: inherit;
+  }
+
+  input:focus,
+  textarea:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 18%, transparent);
+  }
+
+  textarea {
+    @apply resize-y min-h-[55px];
+  }
+
+  button {
+    @apply font-semibold rounded-md cursor-pointer transition-all duration-150;
+  }
+
+  button:disabled {
+    @apply opacity-60 cursor-not-allowed;
+  }
+}
+
+@layer components {
+  .header-endpoint-select {
+    @apply max-w-[104px] px-1.5 py-0.5 text-[10.5px] font-semibold rounded border outline-none cursor-pointer truncate;
+    border-color: var(--border);
+    background: var(--card-bg);
+    color: var(--text);
+  }
+
+  .header-endpoint-select:focus {
+    border-color: var(--primary);
+  }
+
+  .active-server-card {
+    @apply rounded-lg border p-3 mb-2.5 transition-colors;
+    background: var(--card-bg);
+    border-color: var(--border);
+  }
+
+  .active-server-card:hover {
+    border-color: var(--primary);
+  }
+
+  .profiles-list {
+    @apply max-h-[115px] overflow-y-auto flex flex-col gap-1.5 mb-2.5;
+  }
+
+  .profile-item {
+    @apply flex items-center justify-between gap-2 px-2 py-1.5 rounded-md border cursor-pointer transition-colors;
+    border-color: var(--border);
+    background: var(--card-bg);
+  }
+
+  .profile-item:hover {
+    border-color: var(--primary);
+  }
+
+  .profile-item.editing {
+    border-color: var(--primary);
+    background: var(--info-bg);
+  }
+
+  .profile-info {
+    @apply min-w-0 flex-1;
+  }
+
+  .profile-name-row {
+    @apply flex items-center gap-1.5 text-[11.5px] font-semibold;
+  }
+
+  .profile-name-text {
+    @apply truncate;
+  }
+
+  .profile-active-tag {
+    @apply text-[9px] font-bold uppercase px-1.5 py-0.5 rounded shrink-0;
+    background: var(--success-bg);
+    color: var(--success-text);
+  }
+
+  .profile-url {
+    @apply text-[10px] truncate mt-0.5;
+    color: var(--text-muted);
+  }
+
+  .btn-delete-profile {
+    @apply shrink-0 px-1.5 py-0.5 text-[11px] bg-transparent border border-transparent rounded;
+    color: var(--text-muted);
+  }
+
+  .btn-delete-profile:hover {
+    background: var(--error-bg);
+    color: var(--error-text);
+    border-color: var(--error-text);
+  }
+
+  .tab-btn {
+    @apply flex-1 px-2.5 py-1.5 text-xs font-semibold bg-transparent border-0 border-b-2 border-transparent text-center rounded-none transition-colors;
+    color: var(--text-muted);
+  }
+
+  .tab-btn:hover:not(.active) {
+    color: var(--text);
+  }
+
+  .tab-btn.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+  }
+
+  .tab-pane {
+    @apply hidden;
+  }
+
+  .tab-pane.active {
+    @apply block;
+  }
+
+  .hint {
+    @apply text-[10px] mt-1;
+    color: var(--text-muted);
+  }
+
+  .btn-primary {
+    @apply flex-1 px-2.5 py-1.5 text-xs text-white border border-transparent shadow-xs;
+    background: var(--primary);
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    background: var(--primary-hover);
+  }
+
+  .btn-secondary {
+    @apply flex-1 px-2.5 py-1.5 text-xs border;
+    background: var(--btn-secondary-bg);
+    color: var(--text);
+    border-color: var(--border);
+  }
+
+  .btn-secondary:hover:not(:disabled) {
+    background: var(--btn-secondary-hover);
+  }
+
+  .btn-icon {
+    @apply shrink-0 px-2 py-0.5 text-[10.5px] whitespace-nowrap bg-transparent border rounded;
+    border-color: var(--border);
+    color: var(--text-muted);
+  }
+
+  .btn-icon:hover {
+    background: var(--btn-secondary-bg);
+    color: var(--text);
+  }
+
+  .scope-btn {
+    @apply flex-1 px-2 py-1 text-[11px] font-semibold bg-transparent border-0 rounded;
+    color: var(--text-muted);
+  }
+
+  .scope-btn.active {
+    background: var(--primary);
+    color: #ffffff;
+  }
+
+  .summary-pill {
+    @apply flex-1 flex items-center justify-center gap-1 text-[10px] font-semibold px-1.5 py-1.5 rounded-md border whitespace-nowrap select-none;
+    background: var(--card-bg);
+    border-color: var(--border);
+    color: var(--text);
+  }
+
+  .summary-pill:hover {
+    border-color: var(--primary);
+  }
+
+  .summary-pill:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 1px;
+  }
+
+  .summary-pill.active {
+    @apply font-bold shadow-xs;
+  }
+
+  .summary-pill.active#filterActiveBtn {
+    background: var(--info-bg);
+    border-color: var(--primary);
+    color: var(--info-text);
+  }
+
+  .summary-pill.active#filterCompletedBtn {
+    background: var(--success-bg);
+    border-color: var(--success-text);
+    color: var(--success-text);
+  }
+
+  .summary-pill.active#filterFailedBtn {
+    background: var(--error-bg);
+    border-color: var(--error-text);
+    color: var(--error-text);
+  }
+
+  .job-card {
+    @apply rounded-md border px-2.5 py-2 text-[11px] transition-colors;
+    background: var(--card-bg);
+    border-color: var(--border);
+  }
+
+  .job-header {
+    @apply flex justify-between items-center mb-1 gap-1.5;
+  }
+
+  .job-badge {
+    @apply text-[9px] font-bold uppercase px-1.5 py-0.5 rounded shrink-0;
+  }
+
+  .badge-queued { background: var(--btn-secondary-bg); color: var(--text-muted); }
+  .badge-resolving_debrid { background: var(--amber-bg); color: var(--amber-text); }
+  .badge-downloading { background: var(--info-bg); color: var(--info-text); }
+  .badge-extracting { background: var(--purple-bg); color: var(--purple-text); }
+  .badge-completed { background: var(--success-bg); color: var(--success-text); }
+  .badge-failed { background: var(--error-bg); color: var(--error-text); }
+
+  .job-filename {
+    @apply font-semibold break-all leading-snug;
+  }
+
+  .job-subtext {
+    @apply text-[10px] break-all mt-0.5 text-right;
+    color: var(--text-muted);
+  }
+
+  .job-error {
+    @apply text-[10px] mt-1;
+    color: var(--error-text);
+  }
+
+  .progress-container {
+    @apply w-full rounded h-1.5 mt-1.5 overflow-hidden border;
+    background: var(--btn-secondary-bg);
+    border-color: var(--border);
+  }
+
+  .progress-bar {
+    @apply h-full transition-all duration-300;
+    background: var(--primary);
+  }
+
+  .progress-info {
+    @apply flex justify-between items-center text-[10px] mt-1;
+    color: var(--text-muted);
+  }
+
+  .empty-queue {
+    @apply text-center text-[11px] py-4 px-2 rounded-md border border-dashed;
+    color: var(--text-muted);
+    border-color: var(--border);
+  }
+
+  .torrent-dropzone {
+    @apply border border-dashed rounded-md px-2.5 py-2.5 text-center cursor-pointer transition-colors text-[11px] flex items-center justify-center gap-1.5 mt-2;
+    border-color: var(--border);
+    background: var(--card-bg);
+    color: var(--text-muted);
+  }
+
+  .torrent-dropzone:hover,
+  .torrent-dropzone.dragover {
+    border-color: var(--primary);
+    background: var(--info-bg);
+    color: var(--text);
+  }
+
+  .status-box {
+    @apply mt-2.5 px-2.5 py-2 text-[11px] rounded-md hidden break-words leading-relaxed border;
+  }
+
+  .status-box.success {
+    @apply block;
+    background: var(--success-bg);
+    color: var(--success-text);
+    border-color: var(--success-text);
+  }
+
+  .status-box.error {
+    @apply block;
+    background: var(--error-bg);
+    color: var(--error-text);
+    border-color: var(--error-text);
+  }
+
+  .status-box.info {
+    @apply block;
+    background: var(--info-bg);
+    color: var(--info-text);
+    border-color: var(--info-text);
+  }
+
+  .active-page-banner {
+    @apply rounded-md border px-2.5 py-2 mb-2.5 flex-col gap-1.5;
+    background: var(--info-bg);
+    border-color: var(--primary);
+  }
+}
+
+body.tab-pending .tabs,
+body.tab-pending .tab-pane {
+  opacity: 0;
+  animation: tabRevealFallback 0s 120ms forwards;
+}
+
+@keyframes tabRevealFallback {
+  to {
+    opacity: 1;
+  }
+}

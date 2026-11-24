@@ -1,0 +1,43 @@
+services:
+  debrid-hub:
+    image: ghcr.io/progiwell/debrid-hub:latest
+    # To build locally instead of pulling from ghcr.io, run from repo root or uncomment:
+    # build:
+    #   context: ..
+    #   dockerfile: server/Dockerfile
+    container_name: debrid-hub
+    restart: unless-stopped
+    ports:
+      # Host port mapping: Default 38415 (zero-collision high port)
+      - "${PORT:-38415}:8080"
+    environment:
+      # Real-Debrid API token (found at https://real-debrid.com/apitoken)
+      - RD_API_KEY=${RD_API_KEY}
+      # Real-Debrid REST API endpoint (defaults to official v1.0)
+      - RD_BASE_URL=${RD_BASE_URL:-https://api.real-debrid.com/rest/1.0}
+      # Optional shared secret to protect the server daemon endpoints
+      - API_AUTH_KEY=${API_AUTH_KEY:-}
+      # Container-internal download directory (mapped via volumes below)
+      - DOWNLOAD_DIR=/downloads
+      # Persistent configuration path
+      - CONFIG_FILE=/config/settings.json
+      # Maximum concurrent connections per server for aria2c
+      - ARIA2C_MAX_CONNECTIONS=${ARIA2C_MAX_CONNECTIONS:-16}
+      # Number of parallel chunks to split each download into
+      - ARIA2C_SPLIT=${ARIA2C_SPLIT:-16}
+      # Automatically extract downloaded archives
+      - AUTO_EXTRACT=${AUTO_EXTRACT:-true}
+      # Remove source archive volumes after successful extraction
+      - CLEANUP_AFTER_EXTRACT=${CLEANUP_AFTER_EXTRACT:-true}
+      # Shared storage file permission mask (002 allows group write)
+      - UMASK=${UMASK:-002}
+    volumes:
+      # Download folder mapping (TRaSH Guides standard /data/downloads):
+      # Map your host downloads folder to the container's /downloads mount point.
+      - ${NAS_DOWNLOAD_PATH:-/data/downloads}:/downloads
+      # Persistent configuration and runtime settings:
+      - ${NAS_CONFIG_PATH:-./config}:/config
+    # Allow up to 30 seconds for graceful shutdown before SIGKILL
+    stop_grace_period: 30s
+    # Enforce lean memory target (<50MB typical footprint, 256MB safety cap for large extractions)
+    mem_limit: 256m

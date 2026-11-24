@@ -1,0 +1,359 @@
+@import "tailwindcss";
+@source "../../templates/settings.html";
+@source "./**/*.ts";
+
+:root {
+  --bg: #f8fafc;
+  --surface: #ffffff;
+  --card-bg: #f1f5f9;
+  --border: #e2e8f0;
+  --text: #0f172a;
+  --text-muted: #64748b;
+  --heading: #020617;
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --btn-secondary: #f1f5f9;
+  --btn-secondary-hover: #e2e8f0;
+  --btn-danger: #dc2626;
+  --btn-danger-hover: #b91c1c;
+  --success: #059669;
+  --success-bg: #ecfdf5;
+  --danger: #dc2626;
+  --danger-bg: #fef2f2;
+  --info: #2563eb;
+  --info-bg: #eff6ff;
+  --warning: #d97706;
+  --warning-bg: #fffbeb;
+  --purple: #7c3aed;
+  --purple-bg: #f5f3ff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --card-bg: #0d1117;
+    --border: #30363d;
+    --text: #c9d1d9;
+    --text-muted: #8b949e;
+    --heading: #f0f6fc;
+    --primary: #2563eb;
+    --primary-hover: #1d4ed8;
+    --btn-secondary: #21262d;
+    --btn-secondary-hover: #30363d;
+    --btn-danger: #da3633;
+    --btn-danger-hover: #b62324;
+    --success: #3fb950;
+    --success-bg: rgba(63, 185, 80, 0.15);
+    --danger: #f85149;
+    --danger-bg: rgba(248, 81, 73, 0.15);
+    --info: #58a6ff;
+    --info-bg: rgba(88, 166, 255, 0.15);
+    --warning: #d29922;
+    --warning-bg: rgba(210, 153, 34, 0.18);
+    --purple: #bc8cff;
+    --purple-bg: rgba(188, 140, 255, 0.16);
+  }
+}
+
+@layer base {
+  body {
+    @apply m-0 p-5 flex justify-center antialiased min-h-screen;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+
+  label {
+    @apply block mb-1.5 font-semibold text-[13px];
+  }
+
+  input[type="text"],
+  input[type="password"],
+  input[type="number"],
+  select,
+  textarea {
+    @apply w-full px-3 py-2 rounded-md border text-[13px] outline-none transition-colors;
+    background: var(--bg);
+    border-color: var(--border);
+    color: var(--heading);
+  }
+
+  input:focus,
+  select:focus,
+  textarea:focus {
+    border-color: var(--info);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--info) 20%, transparent);
+  }
+
+  button {
+    @apply px-4 py-2 rounded-md font-semibold text-[13px] cursor-pointer transition-all duration-150 inline-flex items-center justify-center gap-1.5 border border-transparent;
+  }
+
+  button:disabled {
+    @apply opacity-50 cursor-not-allowed;
+  }
+}
+
+@layer components {
+  .nav-tab {
+    @apply px-4 py-2 rounded-md border text-[13px] font-semibold inline-flex items-center gap-1.5;
+    background: var(--btn-secondary);
+    border-color: var(--border);
+    color: var(--text);
+  }
+
+  .nav-tab:hover:not(.active) {
+    background: var(--btn-secondary-hover);
+    color: var(--heading);
+  }
+
+  .nav-tab.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #ffffff;
+  }
+
+  .tab-content {
+    @apply hidden;
+  }
+
+  .tab-content.active {
+    @apply block;
+  }
+
+  .btn-primary {
+    background: var(--primary);
+    color: #ffffff;
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    background: var(--primary-hover);
+  }
+
+  .btn-secondary {
+    background: var(--btn-secondary);
+    color: var(--heading);
+    border-color: var(--border);
+  }
+
+  .btn-secondary:hover:not(:disabled) {
+    background: var(--btn-secondary-hover);
+  }
+
+  .btn-danger {
+    background: var(--btn-danger);
+    color: #ffffff;
+  }
+
+  .btn-danger:hover:not(:disabled) {
+    background: var(--btn-danger-hover);
+  }
+
+  .btn-sm {
+    @apply px-2.5 py-1 text-xs;
+  }
+
+  .summary-pill {
+    @apply inline-flex items-center justify-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-md border whitespace-nowrap select-none;
+    background: var(--card-bg);
+    border-color: var(--border);
+    color: var(--text);
+  }
+
+  .summary-pill:hover {
+    border-color: var(--info);
+  }
+
+  .summary-pill:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 1px;
+  }
+
+  .summary-pill.active {
+    @apply font-bold shadow-xs;
+  }
+
+  .summary-pill.active#filter-active-btn {
+    background: var(--info-bg);
+    border-color: var(--info);
+    color: var(--info);
+  }
+
+  .summary-pill.active#filter-completed-btn {
+    background: var(--success-bg);
+    border-color: var(--success);
+    color: var(--success);
+  }
+
+  .summary-pill.active#filter-failed-btn {
+    background: var(--danger-bg);
+    border-color: var(--danger);
+    color: var(--danger);
+  }
+
+  .torrent-dropzone {
+    @apply mt-3 border border-dashed rounded-md px-4 py-3 text-center cursor-pointer transition-colors flex items-center justify-center gap-2.5 text-[13px];
+    border-color: var(--border);
+    background: color-mix(in srgb, var(--surface) 60%, transparent);
+    color: var(--text-muted);
+  }
+
+  .torrent-dropzone:hover,
+  .torrent-dropzone.dragover {
+    border-color: var(--primary);
+    background: var(--info-bg);
+    color: var(--text);
+  }
+
+  .job-card {
+    @apply rounded-lg border p-4 mb-3 transition-colors;
+    background: var(--card-bg);
+    border-color: var(--border);
+  }
+
+  .job-card:hover {
+    border-color: var(--text-muted);
+  }
+
+  .job-header {
+    @apply flex justify-between items-start mb-2.5 gap-3;
+  }
+
+  .job-title {
+    @apply text-sm font-semibold break-all;
+    color: var(--heading);
+  }
+
+  .status-badge {
+    @apply text-[11px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap uppercase tracking-wide shrink-0 border;
+  }
+
+  .badge-queued { background: var(--warning-bg); color: var(--warning); border-color: color-mix(in srgb, var(--warning) 45%, transparent); }
+  .badge-resolving_debrid { background: var(--info-bg); color: var(--info); border-color: color-mix(in srgb, var(--info) 45%, transparent); }
+  .badge-downloading { background: var(--success-bg); color: var(--success); border-color: color-mix(in srgb, var(--success) 45%, transparent); }
+  .badge-extracting { background: var(--purple-bg); color: var(--purple); border-color: color-mix(in srgb, var(--purple) 45%, transparent); }
+  .badge-completed { background: var(--success-bg); color: var(--success); border-color: var(--success); }
+  .badge-failed { background: var(--danger-bg); color: var(--danger); border-color: var(--danger); }
+
+  .tag-group {
+    @apply inline-flex items-center gap-1.5 mt-1.5 flex-wrap;
+  }
+
+  .origin-badge,
+  .type-badge {
+    @apply text-[10px] font-semibold px-2 py-0.5 rounded-full inline-flex items-center gap-1 border;
+  }
+
+  .type-badge {
+    @apply rounded;
+  }
+
+  .badge-sonarr { background: rgba(56, 139, 253, 0.15); color: #388bfd; border-color: rgba(56, 139, 253, 0.4); }
+  .badge-radarr { background: rgba(210, 153, 34, 0.15); color: #d97706; border-color: rgba(210, 153, 34, 0.4); }
+  .badge-lidarr { background: rgba(46, 196, 182, 0.15); color: #0d9488; border-color: rgba(46, 196, 182, 0.4); }
+  .badge-readarr { background: rgba(231, 111, 81, 0.15); color: #e76f51; border-color: rgba(231, 111, 81, 0.4); }
+  .badge-context-menu { background: rgba(168, 85, 247, 0.15); color: #9333ea; border-color: rgba(168, 85, 247, 0.4); }
+  .badge-click-n-load { background: rgba(234, 179, 8, 0.15); color: #ca8a04; border-color: rgba(234, 179, 8, 0.4); }
+  .badge-paste { background: rgba(14, 165, 233, 0.15); color: #0284c7; border-color: rgba(14, 165, 233, 0.4); }
+  .badge-upload { background: rgba(34, 197, 94, 0.15); color: #16a34a; border-color: rgba(34, 197, 94, 0.4); }
+  .badge-device { background: rgba(16, 185, 129, 0.15); color: #059669; border-color: rgba(16, 185, 129, 0.4); }
+  .badge-generic-origin { background: rgba(139, 148, 158, 0.15); color: var(--text-muted); border-color: rgba(139, 148, 158, 0.4); }
+
+  .type-magnet { background: rgba(163, 113, 247, 0.15); color: #9333ea; border-color: rgba(163, 113, 247, 0.4); }
+  .type-torrent { background: rgba(56, 139, 253, 0.15); color: #2563eb; border-color: rgba(56, 139, 253, 0.4); }
+  .type-hoster { background: rgba(6, 182, 212, 0.15); color: #0891b2; border-color: rgba(6, 182, 212, 0.4); }
+
+  .progress-bar-wrap {
+    @apply w-full h-2 rounded overflow-hidden my-2.5;
+    background: var(--btn-secondary);
+  }
+
+  .progress-bar-fill {
+    @apply h-full w-0 transition-all duration-300;
+    background: var(--primary);
+  }
+
+  .progress-bar-fill.active {
+    background: linear-gradient(90deg, #2563eb, #3b82f6);
+  }
+
+  .progress-bar-fill.extracting {
+    background: var(--purple);
+  }
+
+  .job-meta {
+    @apply flex justify-between text-xs flex-wrap gap-2;
+    color: var(--text-muted);
+  }
+
+  .job-error {
+    @apply mt-2.5 px-3 py-2 rounded-md text-xs break-all border;
+    background: var(--danger-bg);
+    border-color: var(--danger);
+    color: var(--danger);
+  }
+
+  .job-extracted {
+    @apply mt-2 text-xs;
+    color: var(--purple);
+  }
+
+  .job-actions {
+    @apply flex gap-2 mt-3 justify-end;
+  }
+
+  #jobs-container {
+    transition: opacity 0.2s ease;
+  }
+
+  #jobs-container.is-refreshing {
+    opacity: 0.5;
+    pointer-events: none;
+  }
+
+  .spin-icon {
+    display: inline-block;
+    transition: transform 0.2s ease;
+  }
+
+  .spinning {
+    animation: spin 0.75s linear infinite;
+  }
+
+  .refresh-success {
+    border-color: var(--success) !important;
+    color: var(--success) !important;
+  }
+
+  @keyframes spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .empty-state {
+    @apply text-center py-10 px-5 text-sm rounded-lg border border-dashed;
+    color: var(--text-muted);
+    border-color: var(--border);
+  }
+
+  #status-msg {
+    @apply mt-4 p-2.5 rounded-md text-[13px] hidden border;
+  }
+
+  .status-success {
+    background: var(--success-bg);
+    border-color: var(--success);
+    color: var(--success);
+  }
+
+  .status-error {
+    background: var(--danger-bg);
+    border-color: var(--danger);
+    color: var(--danger);
+  }
+}
