@@ -6,7 +6,9 @@ import asyncio
 import contextlib
 import re
 import shutil
+import stat
 import struct
+import zipfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import BinaryIO, ClassVar
@@ -187,6 +189,156 @@ def _inspect_rar5(stream: BinaryIO, file_size: int) -> RarVolumeInfo:
     if not saw_main or not saw_endarc:
         return _truncated()
     return RarVolumeInfo(5, is_volume, endarc_next_volume or saw_split_after, False, False, volume_number)
+
+
+def _is_unsafe_archive_member_path(member_name: str, destination_dir: Path) -> bool:
+    """Return True if an archive member path attempts traversal, absolute write, or null-byte injection."""
+    if not member_name or "\x00" in member_name:
+        return True
+    normalized = member_name.replace("\\", "/")
+    if normalized.startswith("/") or re.match(r"^[A-Za-z]:", normalized):
+        return True
+    if ".." in normalized.split("/"):
+        return True
+    dest_resolved = destination_dir.resolve()
+    candidate = (dest_resolved / normalized).resolve()
+    return not candidate.is_relative_to(dest_resolved)
+
+
+def validate_zip_members(archive_path: Path, destination_dir: Path) -> None:
+    """Reject zip archives containing path traversal entries or symlinks."""
+    if not archive_path.is_file() or not zipfile.is_zipfile(archive_path):
+        return
+    with zipfile.ZipFile(archive_path, "r") as zf:
+        for info in zf.infolist():
+            if _is_unsafe_archive_member_path(info.filename, destination_dir):
+                raise ValueError(f"Unsafe path traversal entry in zip archive: {info.filename}")
+            if stat.S_ISLNK(info.external_attr >> 16):
+                raise ValueError(f"Unsafe symlink entry in zip archive: {info.filename}")
+
+
+def validate_rar_members(archive_path: Path, destination_dir: Path) -> None:
+    """Inspect RAR4/RAR5 file headers and reject traversal paths or symlink entries."""
+    if not archive_path.is_file():
+        return
+    file_size = archive_path.stat().st_size
+    with archive_path.open("rb") as stream:
+        magic = stream.read(8)
+        if magic == RAR5_MAGIC:
+            while stream.tell() < file_size:
+                if len(stream.read(4)) < 4:
+                    return
+                head_size = _read_vint_stream(stream)
+                if head_size is None or head_size == 0 or head_size > RAR5_MAX_HEADER_SIZE:
+                    return
+                body_start = stream.tell()
+                if body_start + head_size > file_size:
+                    return
+                body = stream.read(head_size)
+                if len(body) < head_size:
+                    return
+                try:
+                    head_type, idx = _read_vint(body, 0)
+                    head_flags, idx = _read_vint(body, idx)
+                    if head_flags & 0x0001:
+                        _extra_size, idx = _read_vint(body, idx)
+                    data_size = 0
+                    if head_flags & 0x0002:
+                        data_size, idx = _read_vint(body, idx)
+                    if head_type == 4:
+                        return
+                    if head_type == 2:
+                        file_flags, idx = _read_vint(body, idx)
+                        _unpacked_size, idx = _read_vint(body, idx)
+                        attributes, idx = _read_vint(body, idx)
+                        if file_flags & 0x0002:
+                            idx += 4
+                        if file_flags & 0x0004:
+                            idx += 4
+                        _comp_info, idx = _read_vint(body, idx)
+                        host_os, idx = _read_vint(body, idx)
+                        name_len, idx = _read_vint(body, idx)
+                    else:
+                        head_type = -1
+                except ValueError:
+                    return
+
+                if head_type == 2 and idx + name_len <= len(body):
+                    name = body[idx : idx + name_len].decode("utf-8", errors="replace")
+                    if _is_unsafe_archive_member_path(name, destination_dir):
+                        raise ValueError(f"Unsafe path traversal entry in RAR5 archive: {name}")
+                    if host_os == 1 and stat.S_ISLNK(attributes):
+                        raise ValueError(f"Unsafe symlink entry in RAR5 archive: {name}")
+
+                next_pos = body_start + head_size + data_size
+                if next_pos > file_size:
+                    return
+                stream.seek(next_pos)
+            return
+
+        if magic[:7] == RAR4_MAGIC:
+            stream.seek(7)
+            while (pos := stream.tell()) < file_size:
+                hdr = stream.read(7)
+                if len(hdr) < 7:
+                    return
+                try:
+                    _head_crc, head_type, head_flags, head_size = struct.unpack("<HBHH", hdr)
+                except struct.error:
+                    return
+                if head_size < 7 or pos + head_size > file_size:
+                    return
+                remaining = stream.read(head_size - 7)
+                if len(remaining) < head_size - 7:
+                    return
+
+                add_size = 0
+                if head_type == 0x74 or (head_flags & 0x8000):
+                    if len(remaining) < 4:
+                        return
+                    add_size = struct.unpack_from("<I", remaining, 0)[0]
+                    if head_type in (0x74, 0x7A) and (head_flags & 0x0100):
+                        if len(remaining) < 29:
+                            return
+                        high_pack_size = struct.unpack_from("<I", remaining, 25)[0]
+                        add_size |= high_pack_size << 32
+
+                if head_type == 0x73 and (head_flags & 0x0080):
+                    return
+                if head_type == 0x74 and len(remaining) >= 25:
+                    host_os = remaining[8]
+                    name_size = struct.unpack_from("<H", remaining, 19)[0]
+                    attr = struct.unpack_from("<I", remaining, 21)[0]
+                    name_offset = 33 if (head_flags & 0x0100) else 25
+                    if len(remaining) >= name_offset + name_size:
+                        raw_name = remaining[name_offset : name_offset + name_size]
+                        if head_flags & 0x0200:
+                            raw_name = raw_name.split(b"\x00", 1)[0]
+                        name = raw_name.decode("utf-8", errors="replace")
+                        if _is_unsafe_archive_member_path(name, destination_dir):
+                            raise ValueError(f"Unsafe path traversal entry in RAR archive: {name}")
+                        if host_os == 3 and stat.S_ISLNK(attr):
+                            raise ValueError(f"Unsafe symlink entry in RAR archive: {name}")
+                elif head_type == 0x7B:
+                    return
+
+                next_pos = pos + head_size + add_size
+                if next_pos > file_size:
+                    return
+                stream.seek(next_pos)
+
+
+def validate_extracted_tree(destination_dir: Path, before_entries: set[Path]) -> None:
+    """Remove any newly extracted symlink that escapes destination_dir and raise ValueError."""
+    dest_resolved = destination_dir.resolve()
+    for p in destination_dir.rglob("*"):
+        if p in before_entries:
+            continue
+        if p.is_symlink():
+            resolved = p.resolve()
+            if not resolved.is_relative_to(dest_resolved):
+                p.unlink(missing_ok=True)
+                raise ValueError(f"Unsafe symlink escaping target directory removed: {p.name}")
 
 
 class ArchiveExtractor:
@@ -404,12 +556,18 @@ class ArchiveExtractor:
 
     def build_extract_command(self, archive_path: Path, dest_arg: str) -> list[str]:
         """Construct the extraction command depending on active binary (unrar or 7z)."""
+        archive_str = str(archive_path)
+        if archive_str.startswith("-"):
+            archive_str = f"./{archive_str}"
+        if dest_arg.startswith("-"):
+            dest_arg = f"./{dest_arg}"
+
         active_tool = self.tool
         if active_tool == "7z":
-            # 7-Zip CLI: 7z x -y -o<dest_dir> <archive_path>
-            return ["7z", "x", "-y", f"-o{dest_arg}", str(archive_path)]
-        # Default unrar CLI: unrar x -o+ -y <archive_path> <dest_dir/>
-        return ["unrar", "x", "-o+", "-y", str(archive_path), dest_arg]
+            # 7-Zip CLI: 7z x -y -o<dest_dir> -- <archive_path>
+            return ["7z", "x", "-y", f"-o{dest_arg}", "--", archive_str]
+        # Default unrar CLI: unrar x -o+ -y -- <archive_path> <dest_dir/>
+        return ["unrar", "x", "-o+", "-y", "--", archive_str, dest_arg]
 
     async def extract_and_cleanup(self, archive_path: Path, destination_dir: Path) -> list[Path]:
         """Extract an archive into `destination_dir` and optionally delete source archive parts."""
@@ -417,7 +575,13 @@ class ArchiveExtractor:
         destination_dir = Path(destination_dir)
         destination_dir.mkdir(parents=True, exist_ok=True)
 
-        before_files = {p for p in destination_dir.rglob("*") if p.is_file()}
+        if archive_path.suffix.lower() == ".zip":
+            validate_zip_members(archive_path, destination_dir)
+        elif self.is_rar_volume(archive_path):
+            validate_rar_members(archive_path, destination_dir)
+
+        before_entries = set(destination_dir.rglob("*"))
+        before_files = {p for p in before_entries if p.is_file() and not p.is_symlink()}
 
         dest_arg = str(destination_dir).rstrip("/") + "/"
         active_tool = self.tool
@@ -441,11 +605,13 @@ class ArchiveExtractor:
             err_msg = stderr.decode().strip() or stdout.decode().strip() or f"exit code {proc.returncode}"
             raise RuntimeError(f"{active_tool} extraction failed with code {proc.returncode}: {err_msg}")
 
+        validate_extracted_tree(destination_dir, before_entries)
+
         if self.cleanup_after_extract:
             for volume in self.find_related_volumes(archive_path):
                 if volume.exists():
                     volume.unlink()
 
-        after_files = {p for p in destination_dir.rglob("*") if p.is_file()}
+        after_files = {p for p in destination_dir.rglob("*") if p.is_file() and not p.is_symlink()}
         extracted_files = [p for p in sorted(after_files - before_files, key=lambda p: str(p)) if p.is_file()]
         return extracted_files

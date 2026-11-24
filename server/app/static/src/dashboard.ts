@@ -36,13 +36,14 @@ const STATUS_FILTERS: Record<
   },
 };
 
-function escapeHtml(str: string | null | undefined): string {
+export function escapeHtml(str: string | null | undefined): string {
   if (!str) return "";
   return String(str)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 function sortJobsNewestFirst(jobs: DownloadJob[]): DownloadJob[] {
@@ -101,10 +102,11 @@ function resolveJobTitle(job: DownloadJob): string {
   return job.source_url || job.job_id;
 }
 
-function renderJobCardHtml(job: DownloadJob): string {
+export function renderJobCardHtml(job: DownloadJob): string {
   const title = resolveJobTitle(job);
   const statusClass = `badge-${job.status}`;
-  const pct = Math.min(Math.max(job.progress_percent ?? 0, 0), 100);
+  const rawPct = Number(job.progress_percent);
+  const pct = Number.isFinite(rawPct) ? Math.min(Math.max(rawPct, 0), 100) : 0;
   const isActive = ["downloading", "resolving_debrid"].includes(job.status);
   const isExtracting = job.status === "extracting";
   const isFailed = job.status === "failed";
@@ -119,8 +121,8 @@ function renderJobCardHtml(job: DownloadJob): string {
       ? `<div class="job-extracted">📦 Extracted: ${escapeHtml(job.extracted_files.join(", "))}</div>`
       : "";
   const errorHtml = job.error ? `<div class="job-error">${escapeHtml(job.error)}</div>` : "";
-  const totalFiles = job.total_files ?? 0;
-  const completedFiles = job.completed_files ?? 0;
+  const totalFiles = Number(job.total_files) || 0;
+  const completedFiles = Number(job.completed_files) || 0;
   const filesInfo = totalFiles > 0 ? `${completedFiles} / ${totalFiles} files (${pct.toFixed(1)}%)` : `${pct.toFixed(1)}%`;
 
   const originHtml = formatOriginBadgeHtml(job.source);
