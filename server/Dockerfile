@@ -15,6 +15,8 @@ FROM python:3.11-alpine
 
 LABEL maintainer="Progiwell"
 LABEL description="Lean Real-Debrid Server Daemon for Debrid Hub (FastAPI + Aria2c + Unrar/7-Zip)"
+LABEL org.opencontainers.image.source="https://github.com/progiwell/debrid-hub"
+LABEL org.opencontainers.image.licenses="GPL-3.0-or-later"
 
 # Install lightweight runtime utilities: aria2c, 7zip, and official unrar
 RUN apk add --no-cache \

@@ -2,6 +2,7 @@
   "name": "debrid-hub",
   "version": "0.2.0",
   "private": true,
+  "license": "GPL-3.0-or-later",
   "description": "TypeScript and Tailwind CSS frontend tooling for Debrid Hub",
   "scripts": {
     "typecheck": "tsc --noEmit",
