@@ -85,3 +85,24 @@ docker compose -f server/docker-compose.yml up -d
 ```
 
 Following the [TRaSH Guides](https://trash-guides.info/File-and-Folder-Structure/How-to-set-up/Docker/) directory standard, the default download path is `/data/downloads`, enabling instant atomic moves/hardlinks into media managers (Sonarr, Radarr, Plex).
+
+---
+
+## ⚖️ Dual-Use & Legal Disclaimer
+
+**Debrid Hub** is a general-purpose, client-side API interface and self-hosted download manager intended strictly for lawful use (such as downloading open-source software distributions, public-domain archives, personal cloud backups, and other legally authorized files).
+
+- **No Content Hosting or Indexing:** Debrid Hub and its authors do **not** host, store, index, search, scrape, cache, stream, or distribute any media, torrent files, or copyrighted material.
+- **Independent Client Software:** This software only communicates with user-configured endpoints and third-party Debrid APIs using credentials supplied directly by the user. Debrid Hub is an independent open-source project and is not affiliated with, sponsored by, or endorsed by Real-Debrid, AllDebrid, TorBox, or any other third-party service.
+- **User Responsibility:** Users are solely responsible for all URLs, files, and content they process with this software, and for ensuring their usage complies with all applicable local, national, and international laws as well as the Terms of Service of any third-party providers they choose to connect.
+- **No Warranty:** This software is provided **"AS IS"**, without warranty of any kind, express or implied. See [LICENSE](LICENSE) for full terms.
+
+---
+
+## 📄 License
+
+Copyright © 2026 **Progiwell**.
+
+This project is licensed under the **GNU General Public License v3.0 (GPL-3.0-or-later)** — see the [LICENSE](LICENSE) file for details.
+
+*Note: The official Docker image bundles third-party CLI utilities (`aria2c`, `7zip`, and `unrar`) executed as standalone subprocesses; each utility remains governed by its own respective license.*
