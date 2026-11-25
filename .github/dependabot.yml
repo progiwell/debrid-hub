@@ -12,7 +12,7 @@ updates:
   - package-ecosystem: "pip"
     directory: "/server"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
     groups:
       python-deps:
         patterns:
@@ -21,7 +21,7 @@ updates:
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
     groups:
       node-deps:
         patterns:
