@@ -107,6 +107,24 @@ docker compose up -d
 
 ---
 
+### Image Tags & Version Pinning
+
+| Tag | Source | Notes |
+| :--- | :--- | :--- |
+| `:latest` | `prod` branch / `v*.*.*` tags | Stable production releases (default in `server/docker-compose.yml`). |
+| `:0.2` / `:v0.2.0` | `v*.*.*` release tags | Pin to a minor series (`0.2`) or exact patch (`v0.2.0`) for controlled upgrades. |
+| `:edge` | `main` branch | Pre-release integration builds for staging/testing before `main` → `prod` promotion. |
+| `:sha-<commit>` | Any `main` / `prod` / tag push | Exact immutable commit build. |
+
+To pin your Compose stack to a stable minor release instead of tracking `:latest`:
+```yaml
+services:
+  debrid-hub:
+    image: ghcr.io/progiwell/debrid-hub:0.2
+```
+
+---
+
 ## 4. Testing & Verification via `curl`
 
 ### 1. Health Check

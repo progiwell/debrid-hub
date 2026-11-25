@@ -11,6 +11,7 @@ A unified, lightweight Real-Debrid hub replacing fragmented legacy tools (JDownl
 ```text
 debrid-hub/
 ├── AGENTS.md                        # AI Agent collaboration & repository guide
+├── CHANGELOG.md                     # Release history and notable changes
 ├── README.md                        # Project overview & quickstart
 ├── .env.template                    # Environment variable template
 ├── .dockerignore                    # Docker build context exclusions
@@ -85,6 +86,24 @@ docker compose -f server/docker-compose.yml up -d
 ```
 
 Following the [TRaSH Guides](https://trash-guides.info/File-and-Folder-Structure/How-to-set-up/Docker/) directory standard, the default download path is `/data/downloads`, enabling instant atomic moves/hardlinks into media managers (Sonarr, Radarr, Plex).
+
+---
+
+## 📦 Release Channels & Docker Image Tags
+
+Debrid Hub separates active integration (`main`) from stable production releases (`prod`):
+
+| Channel / Tag | Source | Intended Use |
+| :--- | :--- | :--- |
+| `ghcr.io/progiwell/debrid-hub:latest` | `prod` branch & `v*.*.*` releases | Stable production deployments (default in `docker-compose.yml`). |
+| `ghcr.io/progiwell/debrid-hub:0.2` / `:v0.2.0` | `v*.*.*` git tags | Version-pinned deployments (`major.minor` or exact `vX.Y.Z` patch). |
+| `ghcr.io/progiwell/debrid-hub:edge` | `main` branch | Staging / early testing builds before promotion to `prod`. |
+| `ghcr.io/progiwell/debrid-hub:sha-<commit>` | Any `main`/`prod`/tag build | Immutable commit-pinned rollbacks. |
+
+### Promotion & Release Flow (`main` → `prod`)
+1. Feature and fix PRs target `main`, which publishes `:edge` and `sha-<commit>` without overwriting `:latest`.
+2. Once verified, open a promotion PR from `main` → `prod` (passing `Unit Tests` and `Security & Static Analysis`), then merge to publish `:latest`.
+3. Tagging `vX.Y.Z` on `prod` publishes `:latest`, `:X.Y.Z`, `:vX.Y.Z`, `:X.Y`, and creates a GitHub Release attaching versioned Chrome (`.zip`) and Firefox (`.xpi`) extension bundles with `SHA256SUMS.txt`. See [CHANGELOG.md](CHANGELOG.md).
 
 ---
 

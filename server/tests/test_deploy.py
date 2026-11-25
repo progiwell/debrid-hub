@@ -274,4 +274,37 @@ def test_uvicorn_graceful_shutdown_with_active_sse_connection(tmp_path):
             proc.wait(timeout=2)
 
 
+def test_docker_publish_workflow_separates_edge_and_latest():
+    """Verify docker-publish.yml publishes :edge from main and :latest/semver from prod/tags."""
+    workflow = (REPO_ROOT / ".github" / "workflows" / "docker-publish.yml").read_text(encoding="utf-8")
+
+    assert 'branches: [ "main", "prod" ]' in workflow
+    assert "latest=false" in workflow
+    assert "type=raw,value=edge,enable=${{ github.ref == 'refs/heads/main' }}" in workflow
+    assert (
+        "type=raw,value=latest,enable=${{ github.ref == 'refs/heads/prod' || "
+        "startsWith(github.ref, 'refs/tags/v') || github.event_name == 'release' }}"
+    ) in workflow
+    assert "type=semver,pattern={{major}}.{{minor}}" in workflow
+
+
+def test_tests_workflow_covers_prod_prs():
+    """Verify tests.yml runs on pull requests targeting both main and prod."""
+    workflow = (REPO_ROOT / ".github" / "workflows" / "tests.yml").read_text(encoding="utf-8")
+    assert "branches: [ main, prod ]" in workflow
+
+
+def test_release_workflow_and_changelog_exist():
+    """Verify release.yml packages versioned Chrome/Firefox extensions and CHANGELOG.md exists."""
+    release_yml = REPO_ROOT / ".github" / "workflows" / "release.yml"
+    assert release_yml.is_file(), ".github/workflows/release.yml must exist"
+    content = release_yml.read_text(encoding="utf-8")
+    assert '"v*.*.*"' in content
+    assert "extension/build.py --sync --validate --package --no-build" in content
+    assert "debrid-hub-chrome-${VERSION}.zip" in content
+    assert "debrid-hub-firefox-${VERSION}.xpi" in content
+
+    changelog = REPO_ROOT / "CHANGELOG.md"
+    assert changelog.is_file(), "CHANGELOG.md must exist at repository root"
+    assert "## [0.2.0]" in changelog.read_text(encoding="utf-8")
 

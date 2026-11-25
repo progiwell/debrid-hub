@@ -1,0 +1,69 @@
+name: Release Extension Bundles
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  package-and-release:
+    name: Package & Publish Extension Bundles
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: "npm"
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      - name: Typecheck, build, validate, package, and test extension
+        run: |
+          npm ci
+          npm run typecheck
+          npm run build
+          python3 extension/build.py --sync --validate --package --no-build
+          npm run test:ext
+
+      - name: Prepare versioned release artifacts and checksums
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          else
+            VERSION="$(node -p "require('./package.json').version")"
+          fi
+          cp dist/debrid-hub-chrome.zip "dist/debrid-hub-chrome-${VERSION}.zip"
+          cp dist/debrid-hub-firefox.xpi "dist/debrid-hub-firefox-${VERSION}.xpi"
+          (cd dist && sha256sum "debrid-hub-chrome-${VERSION}.zip" "debrid-hub-firefox-${VERSION}.xpi" > SHA256SUMS.txt)
+          ls -lh dist/
+
+      - name: Publish GitHub Release assets
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG_NAME="${GITHUB_REF_NAME}"
+          VERSION="${TAG_NAME#v}"
+          ASSETS=(
+            "dist/debrid-hub-chrome-${VERSION}.zip"
+            "dist/debrid-hub-firefox-${VERSION}.xpi"
+            "dist/SHA256SUMS.txt"
+          )
+          if gh release view "${TAG_NAME}" >/dev/null 2>&1; then
+            gh release upload "${TAG_NAME}" "${ASSETS[@]}" --clobber
+          else
+            gh release create "${TAG_NAME}" "${ASSETS[@]}" \
+              --title "Debrid Hub ${TAG_NAME}" \
+              --generate-notes
+          fi
