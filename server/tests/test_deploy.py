@@ -308,3 +308,113 @@ def test_release_workflow_and_changelog_exist():
     assert changelog.is_file(), "CHANGELOG.md must exist at repository root"
     assert "## [0.2.0]" in changelog.read_text(encoding="utf-8")
 
+
+def test_dockerfile_and_compose_configure_nonroot_puid_pgid():
+    """Verify Dockerfile, docker-compose.yml, and .env.template configure non-root PUID/PGID."""
+    dockerfile = (SERVER_DIR / "Dockerfile").read_text(encoding="utf-8")
+    assert "su-exec" in dockerfile
+    assert "adduser" in dockerfile
+    assert "PUID=1000" in dockerfile
+    assert "PGID=1000" in dockerfile
+
+    compose = (SERVER_DIR / "docker-compose.yml").read_text(encoding="utf-8")
+    assert "PUID=${PUID:-1000}" in compose
+    assert "PGID=${PGID:-1000}" in compose
+
+    env_tpl = (REPO_ROOT / ".env.template").read_text(encoding="utf-8")
+    assert "PUID=1000" in env_tpl
+    assert "PGID=1000" in env_tpl
+
+
+def _write_executable(path: Path, content: str) -> None:
+    path.write_text(content, encoding="utf-8")
+    path.chmod(0o755)
+
+
+def test_docker_entrypoint_drops_privileges_via_su_exec(tmp_path: Path):
+    """Verify docker-entrypoint.sh chowns config/downloads and drops root via su-exec."""
+    mockbin = tmp_path / "mockbin"
+    mockbin.mkdir()
+    chown_log = tmp_path / "chown.log"
+    su_log = tmp_path / "su_exec.log"
+
+    _write_executable(mockbin / "id", "#!/bin/sh\necho 0\n")
+    _write_executable(mockbin / "chown", f'#!/bin/sh\necho "$*" >> "{chown_log}"\n')
+    _write_executable(
+        mockbin / "su-exec",
+        f'#!/bin/sh\necho "$1|$HOME" > "{su_log}"\nshift\nexec "$@"\n',
+    )
+
+    config_dir = tmp_path / "cfg"
+    download_dir = tmp_path / "dl"
+    env = {
+        "PATH": f"{mockbin}:/usr/bin:/bin",
+        "PUID": "1026",
+        "PGID": "100",
+        "CONFIG_FILE": str(config_dir / "settings.json"),
+        "DOWNLOAD_DIR": str(download_dir),
+    }
+
+    res = subprocess.run(
+        [str(SERVER_DIR / "docker-entrypoint.sh"), "sh", "-c", "exit 0"],
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert res.returncode == 0, res.stderr
+    assert su_log.read_text(encoding="utf-8").strip() == "1026:100|/tmp"
+    chown_lines = chown_log.read_text(encoding="utf-8").splitlines()
+    assert f"-R 1026:100 {config_dir}" in chown_lines
+    assert f"1026:100 {download_dir}" in chown_lines
+
+
+def test_docker_entrypoint_rejects_root_or_invalid_puid_pgid():
+    """Verify docker-entrypoint.sh refuses UID/GID 0 and non-numeric PUID/PGID values."""
+    entrypoint_sh = str(SERVER_DIR / "docker-entrypoint.sh")
+    for bad_env in (
+        {"PUID": "0", "PGID": "1000"},
+        {"PUID": "1000", "PGID": "0"},
+        {"PUID": "root", "PGID": "1000"},
+        {"PUID": "1000", "PGID": "abc"},
+    ):
+        env = {"PATH": "/usr/bin:/bin", **bad_env}
+        res = subprocess.run(
+            [entrypoint_sh, "sh", "-c", "exit 0"],
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert res.returncode != 0
+        assert "[ERROR]" in res.stderr
+
+
+def test_docker_entrypoint_su_exec_graceful_sigterm_exit_zero(tmp_path: Path):
+    """Verify SIGTERM exits 0 cleanly when running child through su-exec."""
+    mockbin = tmp_path / "mockbin"
+    mockbin.mkdir()
+    _write_executable(mockbin / "id", "#!/bin/sh\necho 0\n")
+    _write_executable(mockbin / "chown", "#!/bin/sh\nexit 0\n")
+    _write_executable(mockbin / "su-exec", '#!/bin/sh\nshift\nexec "$@"\n')
+
+    env = {
+        "PATH": f"{mockbin}:/usr/bin:/bin",
+        "PUID": "1000",
+        "PGID": "1000",
+        "CONFIG_FILE": str(tmp_path / "cfg" / "settings.json"),
+        "DOWNLOAD_DIR": str(tmp_path / "dl"),
+    }
+    proc = subprocess.Popen(
+        [str(SERVER_DIR / "docker-entrypoint.sh"), "sleep", "10"],
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    time.sleep(0.5)
+    proc.send_signal(signal.SIGTERM)
+    exit_code = proc.wait(timeout=5)
+    assert exit_code == 0, f"Expected exit code 0 on SIGTERM via su-exec, got {exit_code}"
+
+

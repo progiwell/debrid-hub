@@ -18,7 +18,7 @@ LABEL description="Lean Real-Debrid Server Daemon for Debrid Hub (FastAPI + Aria
 LABEL org.opencontainers.image.source="https://github.com/progiwell/debrid-hub"
 LABEL org.opencontainers.image.licenses="GPL-3.0-or-later"
 
-# Install lightweight runtime utilities: aria2c, 7zip, and official unrar
+# Install lightweight runtime utilities: aria2c, 7zip, su-exec, and official unrar
 RUN apk upgrade --no-cache \
     && apk add --no-cache \
     aria2 \
@@ -26,6 +26,7 @@ RUN apk upgrade --no-cache \
     ca-certificates \
     tzdata \
     libstdc++ \
+    su-exec \
     && apk add --no-cache --virtual .build-deps build-base wget \
     && wget -qO- https://www.rarlab.com/rar/unrarsrc-7.1.5.tar.gz | tar -xzv -C /tmp \
     && make -C /tmp/unrar -f makefile -j$(nproc) \
@@ -45,16 +46,22 @@ COPY --from=ui-builder /src/server/app/static/dashboard.css ./app/static/dashboa
 COPY server/docker-entrypoint.sh ./
 RUN chmod +x docker-entrypoint.sh
 
-# Create default download and configuration directories
-RUN mkdir -p /downloads /config
+# Create default non-root user/group and download/configuration directories
+RUN addgroup -g 1000 -S debrid \
+    && adduser -u 1000 -S -G debrid -h /tmp debrid \
+    && mkdir -p /downloads /config \
+    && chown 1000:1000 /downloads /config
 
 ARG GIT_COMMIT=dev
 
 ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
     DOWNLOAD_DIR=/downloads \
     CONFIG_FILE=/config/settings.json \
     HOST=0.0.0.0 \
     PORT=8080 \
+    PUID=1000 \
+    PGID=1000 \
     UMASK=002 \
     GIT_COMMIT=${GIT_COMMIT}
 

@@ -29,6 +29,9 @@ services:
       - AUTO_EXTRACT=${AUTO_EXTRACT:-true}
       # Remove source archive volumes after successful extraction
       - CLEANUP_AFTER_EXTRACT=${CLEANUP_AFTER_EXTRACT:-true}
+      # Non-root user/group IDs matching host NAS storage permissions
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
       # Shared storage file permission mask (002 allows group write)
       - UMASK=${UMASK:-002}
     volumes:

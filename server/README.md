@@ -41,6 +41,10 @@ NAS_CONFIG_PATH=./config
 # Optional shared secret to protect your server daemon from unauthorized local network clients
 API_AUTH_KEY=
 
+# Non-root container UID/GID matching your host user (Synology: 1026/100, Unraid: 99/100)
+PUID=1000
+PGID=1000
+
 # File permission mask for shared host storage (002 allows group write)
 UMASK=002
 ```
@@ -58,6 +62,8 @@ UMASK=002
 | `NAS_DOWNLOAD_PATH` | `/data/downloads` | Host volume path where files are saved ([TRaSH Guides](https://trash-guides.info/File-and-Folder-Structure/How-to-set-up/Docker/) standard). |
 | `NAS_CONFIG_PATH` | `./config` | Host volume path for persistent database and `settings.json`. |
 | `API_AUTH_KEY` | `""` | Optional shared secret. If set, requests require matching `X-API-Key`. |
+| `PUID` | `1000` | Host User ID used to run the non-root container process via `su-exec`. |
+| `PGID` | `1000` | Host Group ID used to run the non-root container process via `su-exec`. |
 | `UMASK` | `002` | File creation permissions mask on shared host storage. |
 
 ---
@@ -306,7 +312,7 @@ If your *Arr applications access downloads through a different path (such as `/d
 
 ### Permissions & Extraction Best Practices
 
-- **Zero-Configuration Permissions (`UMASK=002`)**: Debrid Hub automatically enforces `UMASK=002` on all downloaded and extracted files. Completed media is saved with `664` file permissions (`775` for directories), allowing Sonarr and Radarr to read, rename, and clean up files without permission errors.
+- **Non-Root Execution (`PUID` / `PGID` + `UMASK=002`)**: Debrid Hub drops root privileges at startup via `su-exec` so `uvicorn`, `aria2c`, `unrar`, and `7z` never run as UID `0`, while matching your host UID/GID (e.g., `1026:100` on Synology DSM or `99:100` on Unraid). Together with `UMASK=002`, completed media is saved with `664` file permissions (`775` for directories), allowing Sonarr and Radarr to read, rename, and clean up files without permission errors.
 - **No Unpackerr Required**: Standard torrent clients require running a separate [Unpackerr](https://unpackerr.zip/) container to extract compressed `.rar` archives before importing. Debrid Hub includes **native multi-threaded archive extraction** (`unrar` and `7z`) with automatic archive cleanup (`CLEANUP_AFTER_EXTRACT=true`), delivering clean, ready-to-import media files directly to your *Arr apps.
 
 ---

@@ -2,14 +2,54 @@
 # ==============================================================================
 # Docker entrypoint wrapper for Debrid Hub
 # ==============================================================================
-# Sets the default UMASK for shared folder permissions and handles SIGTERM
-# and SIGINT cleanly so that graceful container stops return exit code 0,
-# preventing false-positive container manager abnormal exit alerts.
+# Configures UMASK, prepares non-root PUID/PGID ownership on /config and
+# /downloads, drops root privileges via su-exec, and forwards SIGTERM/SIGINT
+# cleanly so graceful container stops return exit code 0.
 # ==============================================================================
 set -e
 
 # Configure default UMASK for shared folder permissions (default 002)
 umask "${UMASK:-002}"
+
+PUID="${PUID:-1000}"
+PGID="${PGID:-1000}"
+
+case "$PUID" in
+    ""|*[!0-9]*)
+        echo "[ERROR] Invalid PUID '${PUID}': must be a positive integer." >&2
+        exit 1
+        ;;
+esac
+if [ "$PUID" -eq 0 ]; then
+    echo "[ERROR] Refusing to run with root PUID=0." >&2
+    exit 1
+fi
+
+case "$PGID" in
+    ""|*[!0-9]*)
+        echo "[ERROR] Invalid PGID '${PGID}': must be a positive integer." >&2
+        exit 1
+        ;;
+esac
+if [ "$PGID" -eq 0 ]; then
+    echo "[ERROR] Refusing to run with root PGID=0." >&2
+    exit 1
+fi
+
+use_su_exec=0
+if [ "$(id -u)" -eq 0 ]; then
+    if ! command -v su-exec >/dev/null 2>&1; then
+        echo "[ERROR] su-exec binary is required to drop root privileges." >&2
+        exit 1
+    fi
+    CONFIG_DIR="$(dirname "${CONFIG_FILE:-/config/settings.json}")"
+    DOWNLOAD_TARGET="${DOWNLOAD_DIR:-/downloads}"
+    mkdir -p "$CONFIG_DIR" "$DOWNLOAD_TARGET" 2>/dev/null || true
+    chown -R "${PUID}:${PGID}" "$CONFIG_DIR" 2>/dev/null || true
+    chown "${PUID}:${PGID}" "$DOWNLOAD_TARGET" 2>/dev/null || true
+    export HOME="/tmp"
+    use_su_exec=1
+fi
 
 child_pid=0
 
@@ -34,7 +74,11 @@ term_handler() {
 
 trap 'term_handler' TERM INT
 
-"$@" &
+if [ "$use_su_exec" -eq 1 ]; then
+    su-exec "${PUID}:${PGID}" "$@" &
+else
+    "$@" &
+fi
 child_pid=$!
 
 set +e
