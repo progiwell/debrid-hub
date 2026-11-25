@@ -119,7 +119,7 @@ def format_torrent_hash(job: DownloadJob) -> str:
     magnet_h = extract_magnet_hash(job.source_url)
     if magnet_h:
         return magnet_h.lower()
-    return hashlib.sha1(job.job_id.encode()).hexdigest().lower()
+    return hashlib.sha1(job.job_id.encode(), usedforsecurity=False).hexdigest().lower()
 
 
 def map_job_state_to_qbittorrent(status: JobStatus) -> str:
@@ -459,7 +459,7 @@ async def qb_torrents_add(
     if urls and urls.strip():
         url_list = [u.strip() for u in urls.splitlines() if u.strip()]
         for u in url_list:
-            info_h = extract_magnet_hash(u) or hashlib.sha1(u.encode()).hexdigest().lower()
+            info_h = extract_magnet_hash(u) or hashlib.sha1(u.encode(), usedforsecurity=False).hexdigest().lower()
             link_type = classify_url(u)
             job_id = str(uuid.uuid4())
 

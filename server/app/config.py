@@ -20,7 +20,7 @@ class Settings:
     debrid_provider: str = os.getenv("DEBRID_PROVIDER", "realdebrid")
     rd_api_key: str = os.getenv("RD_API_KEY", "")
     rd_base_url: str = os.getenv("RD_BASE_URL", "https://api.real-debrid.com/rest/1.0")
-    host: str = os.getenv("HOST", "0.0.0.0")
+    host: str = os.getenv("HOST", "0.0.0.0")  # nosec B104
     port: int = int(os.getenv("PORT", "8080"))
     api_auth_key: str = os.getenv("API_AUTH_KEY", "")
     download_dir: str = os.getenv("DOWNLOAD_DIR", "/downloads")
@@ -46,7 +46,7 @@ def load_settings() -> Settings:
         debrid_provider=os.getenv("DEBRID_PROVIDER", "realdebrid"),
         rd_api_key=os.getenv("RD_API_KEY", ""),
         rd_base_url=os.getenv("RD_BASE_URL", "https://api.real-debrid.com/rest/1.0"),
-        host=os.getenv("HOST", "0.0.0.0"),
+        host=os.getenv("HOST", "0.0.0.0"),  # nosec B104
         port=int(os.getenv("PORT", "8080")),
         api_auth_key=os.getenv("API_AUTH_KEY", ""),
         download_dir=os.getenv("DOWNLOAD_DIR", "/downloads"),

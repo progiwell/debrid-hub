@@ -90,6 +90,25 @@ def validate_manifests():
     with open(firefox_manifest_path, "r", encoding="utf-8") as f:
         firefox_data = json.load(f)
 
+    # Security permission & CSP audit
+    allowed_permissions = {"contextMenus", "storage", "notifications", "alarms", "activeTab"}
+    allowed_host_permissions = {"<all_urls>"}
+    for label, manifest_data in (("Chrome", chrome_data), ("Firefox", firefox_data)):
+        assert manifest_data.get("manifest_version") == 3, f"{label} manifest must target MV3"
+        perms = set(manifest_data.get("permissions", []))
+        unexpected_perms = perms - allowed_permissions
+        assert not unexpected_perms, f"{label} manifest has unexpected permissions: {sorted(unexpected_perms)}"
+        host_perms = set(manifest_data.get("host_permissions", []))
+        unexpected_hosts = host_perms - allowed_host_permissions
+        assert not unexpected_hosts, f"{label} manifest has unexpected host_permissions: {sorted(unexpected_hosts)}"
+        assert "externally_connectable" not in manifest_data, (
+            f"{label} manifest must NOT expose externally_connectable"
+        )
+        csp_val = manifest_data.get("content_security_policy", {}).get("extension_pages", "")
+        assert "unsafe-eval" not in csp_val and "unsafe-inline" not in csp_val, (
+            f"{label} manifest CSP must NOT allow unsafe-eval or unsafe-inline"
+        )
+
     # Chrome requirements: strictly service_worker, no scripts
     chrome_bg = chrome_data.get("background", {})
     assert "service_worker" in chrome_bg, "Chrome manifest must use service_worker"

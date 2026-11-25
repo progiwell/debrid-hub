@@ -43,6 +43,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r server/requirements.txt -r server/requirements-dev.txt
 
+      - name: Run Ruff linter
+        run: |
+          ruff check server/
+
       - name: Run tests with coverage
         working-directory: server
         run: |

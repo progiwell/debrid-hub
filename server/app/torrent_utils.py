@@ -52,11 +52,11 @@ def extract_torrent_metadata(data: bytes) -> tuple[str, str]:
     idx = data.find(b"4:info")
     if idx == -1:
         # Fallback to direct sha1 of data
-        return hashlib.sha1(data).hexdigest().lower(), "download.torrent"
+        return hashlib.sha1(data, usedforsecurity=False).hexdigest().lower(), "download.torrent"
 
     info_start = idx + 6
     if data[info_start : info_start + 1] != b"d":
-        return hashlib.sha1(data).hexdigest().lower(), "download.torrent"
+        return hashlib.sha1(data, usedforsecurity=False).hexdigest().lower(), "download.torrent"
 
     def get_token_len(s: bytes) -> int:
         c = s[:1]
@@ -76,9 +76,9 @@ def extract_torrent_metadata(data: bytes) -> tuple[str, str]:
     try:
         info_len = get_token_len(data[info_start:])
         info_bytes = data[info_start : info_start + info_len]
-        info_hash = hashlib.sha1(info_bytes).hexdigest().lower()
+        info_hash = hashlib.sha1(info_bytes, usedforsecurity=False).hexdigest().lower()
     except (ValueError, IndexError):
-        info_hash = hashlib.sha1(data).hexdigest().lower()
+        info_hash = hashlib.sha1(data, usedforsecurity=False).hexdigest().lower()
         info_bytes = b""
 
     # Attempt to extract name from info dictionary
