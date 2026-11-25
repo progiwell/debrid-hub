@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import base64
+import binascii
 import hashlib
+import hmac
 import logging
 import uuid
 from datetime import UTC, datetime
@@ -61,7 +63,7 @@ def verify_qb_auth(
         return True
 
     # Check X-API-Key header or SID cookie
-    if x_api_key and x_api_key.strip() == settings.api_auth_key:
+    if x_api_key and hmac.compare_digest(x_api_key.strip(), settings.api_auth_key):
         return True
     if auth_cookie and auth_cookie.strip() in VALID_AUTH_TOKENS:
         return True
@@ -72,12 +74,26 @@ def verify_qb_auth(
         try:
             raw = base64.b64decode(auth_header[6:]).decode("utf-8")
             username, _, password = raw.partition(":")
-            if password == settings.api_auth_key or username == settings.api_auth_key:
+            if hmac.compare_digest(password, settings.api_auth_key) or hmac.compare_digest(
+                username, settings.api_auth_key
+            ):
                 return True
-        except (ValueError, binascii.Error):  # noqa: F821
+        except (ValueError, binascii.Error):
             pass
 
     return False
+
+
+def require_qb_auth(
+    request: Request,
+    settings: Annotated[Settings, Depends(get_settings)],
+    auth_cookie: Annotated[str | None, Cookie(alias="SID")] = None,
+    x_api_key: Annotated[str | None, Header(alias="X-API-Key")] = None,
+) -> Settings:
+    """FastAPI dependency enforcing qBittorrent API authentication when API_AUTH_KEY is set."""
+    if not verify_qb_auth(settings, request, auth_cookie=auth_cookie, x_api_key=x_api_key):
+        raise HTTPException(status_code=403, detail="Forbidden")
+    return settings
 
 
 def determine_source(category: str | None) -> str:
@@ -103,7 +119,7 @@ def format_torrent_hash(job: DownloadJob) -> str:
     magnet_h = extract_magnet_hash(job.source_url)
     if magnet_h:
         return magnet_h.lower()
-    return hashlib.sha1(job.job_id.encode()).hexdigest().lower()
+    return hashlib.sha1(job.job_id.encode(), usedforsecurity=False).hexdigest().lower()
 
 
 def map_job_state_to_qbittorrent(status: JobStatus) -> str:
@@ -227,7 +243,10 @@ async def qb_login(
     settings: Annotated[Settings, Depends(get_settings)] = None,  # type: ignore[assignment]
 ) -> Response:
     """Handle qBittorrent authentication."""
-    if settings.api_auth_key and (password != settings.api_auth_key and username != settings.api_auth_key):
+    if settings.api_auth_key and not (
+        hmac.compare_digest(password, settings.api_auth_key)
+        or hmac.compare_digest(username, settings.api_auth_key)
+    ):
         return Response(content="Fails.", media_type="text/plain", status_code=200)
 
     # Set authentication cookie
@@ -256,19 +275,25 @@ async def qb_logout() -> Response:
 
 
 @router.get("/app/version")
-async def qb_app_version() -> Response:
+async def qb_app_version(
+    _settings: Annotated[Settings, Depends(require_qb_auth)],
+) -> Response:
     """Return emulated qBittorrent version."""
     return Response(content="v4.5.2", media_type="text/plain")
 
 
 @router.get("/app/webapiVersion")
-async def qb_webapi_version() -> Response:
+async def qb_webapi_version(
+    _settings: Annotated[Settings, Depends(require_qb_auth)],
+) -> Response:
     """Return emulated qBittorrent Web API version."""
     return Response(content="2.8.19", media_type="text/plain")
 
 
 @router.get("/app/buildInfo")
-async def qb_build_info() -> dict[str, Any]:
+async def qb_build_info(
+    _settings: Annotated[Settings, Depends(require_qb_auth)],
+) -> dict[str, Any]:
     """Return simulated build environment info."""
     return {
         "qt": "5.15.2",
@@ -281,7 +306,7 @@ async def qb_build_info() -> dict[str, Any]:
 
 @router.get("/app/preferences")
 async def qb_preferences(
-    settings: Annotated[Settings, Depends(get_settings)],
+    settings: Annotated[Settings, Depends(require_qb_auth)],
 ) -> dict[str, Any]:
     """Return qBittorrent preferences required by Sonarr / Radarr."""
     return {
@@ -314,7 +339,7 @@ async def qb_preferences(
 
 @router.get("/app/defaultSavePath")
 async def qb_default_save_path(
-    settings: Annotated[Settings, Depends(get_settings)],
+    settings: Annotated[Settings, Depends(require_qb_auth)],
 ) -> Response:
     """Return default download folder path."""
     return Response(content=settings.download_dir, media_type="text/plain")
@@ -434,7 +459,7 @@ async def qb_torrents_add(
     if urls and urls.strip():
         url_list = [u.strip() for u in urls.splitlines() if u.strip()]
         for u in url_list:
-            info_h = extract_magnet_hash(u) or hashlib.sha1(u.encode()).hexdigest().lower()
+            info_h = extract_magnet_hash(u) or hashlib.sha1(u.encode(), usedforsecurity=False).hexdigest().lower()
             link_type = classify_url(u)
             job_id = str(uuid.uuid4())
 
@@ -521,13 +546,17 @@ async def qb_torrents_delete(
             if task and not task.done():
                 task.cancel()
 
-            # Delete physical files if requested
+            # Delete physical files if requested (strictly contained inside job.output_dir)
             if delete_files and job.filenames:
+                base_dir = Path(job.output_dir).resolve()
                 for fn in job.filenames:
-                    p = Path(job.output_dir) / fn
-                    if p.exists() and p.is_file():
+                    raw_path = Path(job.output_dir) / fn
+                    if raw_path.is_symlink():
+                        continue
+                    target = raw_path.resolve()
+                    if target.is_relative_to(base_dir) and target.is_file():
                         try:
-                            p.unlink()
+                            target.unlink()
                         except OSError:
                             pass
 
@@ -614,7 +643,7 @@ async def qb_torrents_files(
 
 @router.get("/torrents/categories")
 async def qb_torrents_categories(
-    settings: Annotated[Settings, Depends(get_settings)],
+    settings: Annotated[Settings, Depends(require_qb_auth)],
 ) -> dict[str, Any]:
     """Return registered categories."""
     store = get_job_store(settings)
@@ -633,20 +662,24 @@ async def qb_torrents_categories(
 
 
 @router.post("/torrents/pause")
-async def qb_torrents_pause() -> Response:
+async def qb_torrents_pause(
+    _settings: Annotated[Settings, Depends(require_qb_auth)],
+) -> Response:
     """Acknowledge torrent pause command."""
     return Response(content="Ok.", media_type="text/plain")
 
 
 @router.post("/torrents/resume")
-async def qb_torrents_resume() -> Response:
+async def qb_torrents_resume(
+    _settings: Annotated[Settings, Depends(require_qb_auth)],
+) -> Response:
     """Acknowledge torrent resume command."""
     return Response(content="Ok.", media_type="text/plain")
 
 
 @router.post("/torrents/setCategory")
 async def qb_torrents_set_category(
-    settings: Annotated[Settings, Depends(get_settings)],
+    settings: Annotated[Settings, Depends(require_qb_auth)],
     hashes: Annotated[str, Form()],
     category: Annotated[str, Form()] = "",
 ) -> Response:

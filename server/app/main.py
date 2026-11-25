@@ -492,7 +492,10 @@ async def create_download(
     link_type = classify_url(effective_url)
     job_id = str(uuid.uuid4())
     output_dir = sanitize_subfolder(settings.download_dir, payload.subfolder)
-    info_hash = extract_magnet_hash(effective_url) or hashlib.sha1(effective_url.encode()).hexdigest().lower()
+    info_hash = (
+        extract_magnet_hash(effective_url)
+        or hashlib.sha1(effective_url.encode(), usedforsecurity=False).hexdigest().lower()
+    )
     source = payload.source or "paste"
     magnet_name = extract_magnet_name(effective_url)
     initial_filenames = [magnet_name] if magnet_name else []

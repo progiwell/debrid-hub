@@ -192,9 +192,9 @@ async def test_extract_and_cleanup_single_rar(tmp_path: Path) -> None:
         assert mock_exec.call_args.kwargs.get("stdin") == asyncio.subprocess.DEVNULL
         cmd_args = mock_exec.call_args[0]
         assert cmd_args[0] == "unrar"
-        assert cmd_args[1:4] == ("x", "-o+", "-y")
-        assert cmd_args[4] == str(rar_file)
-        assert cmd_args[5].endswith("/")
+        assert cmd_args[1:5] == ("x", "-o+", "-y", "--")
+        assert cmd_args[5] == str(rar_file)
+        assert cmd_args[6].endswith("/")
 
         # Archive file should have been cleaned up
         assert not rar_file.exists()
@@ -223,7 +223,8 @@ async def test_extract_and_cleanup_with_7z(tmp_path: Path) -> None:
         assert cmd_args[0] == "7z"
         assert cmd_args[1:3] == ("x", "-y")
         assert cmd_args[3].startswith("-o")
-        assert cmd_args[4] == str(archive_file)
+        assert cmd_args[4] == "--"
+        assert cmd_args[5] == str(archive_file)
 
         assert not archive_file.exists()
         assert isinstance(result, list)

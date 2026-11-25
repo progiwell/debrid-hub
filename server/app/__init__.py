@@ -19,7 +19,7 @@ def _resolve_commit() -> str:
             cwd=os.path.dirname(__file__),
         )
         return out.decode().strip()
-    except Exception:
+    except (OSError, subprocess.SubprocessError):
         return commit or "dev"
 
 

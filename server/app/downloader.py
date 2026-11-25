@@ -11,6 +11,32 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import unquote, urlparse
 
+_ALLOWED_URL_SCHEMES = frozenset({"http", "https", "ftp", "ftps"})
+
+
+def _validate_download_url(url: str) -> str:
+    """Validate that a download URL uses a safe network scheme and cannot inject CLI flags."""
+    cleaned = (url or "").strip()
+    if not cleaned or cleaned.startswith("-") or any(ch in cleaned for ch in ("\x00", "\r", "\n")):
+        raise ValueError(f"Unsafe or unsupported download URL: {url!r}")
+    parsed = urlparse(cleaned)
+    if parsed.scheme.lower() not in _ALLOWED_URL_SCHEMES or not parsed.netloc:
+        raise ValueError(f"Unsafe or unsupported download URL: {url!r}")
+    return cleaned
+
+
+def _sanitize_filename(filename: str | None) -> str | None:
+    """Strip path traversal, control bytes, and leading hyphens from output filenames."""
+    if not filename:
+        return None
+    cleaned = filename.replace("\x00", "").replace("\r", "").replace("\n", "")
+    name = Path(cleaned).name
+    if name in ("", ".", ".."):
+        return None
+    if name.startswith("-"):
+        name = f"_{name}"
+    return name
+
 
 class Aria2Downloader:
     """Wrapper around `aria2c` CLI / process execution for parallel chunked downloads."""
@@ -32,7 +58,11 @@ class Aria2Downloader:
         filename: str | None = None,
     ) -> list[str]:
         """Construct the aria2c CLI command list for a single CDN download."""
+        safe_url = _validate_download_url(url)
         target_dir = output_dir or self.download_dir
+        if target_dir.startswith("-"):
+            target_dir = f"./{target_dir}"
+
         cmd = [
             "aria2c",
             f"--max-connection-per-server={self.max_connections}",
@@ -45,10 +75,10 @@ class Aria2Downloader:
             "--dir",
             target_dir,
         ]
-        safe_filename = Path(filename).name if filename else None
+        safe_filename = _sanitize_filename(filename)
         if safe_filename:
             cmd.extend(["--out", safe_filename])
-        cmd.append(url)
+        cmd.extend(["--", safe_url])
         return cmd
 
     async def download(
@@ -59,17 +89,17 @@ class Aria2Downloader:
         on_progress: Callable[..., Any] | None = None,
     ) -> str:
         """Execute aria2c to download the unrestricted CDN URL to the target directory."""
+        safe_url = _validate_download_url(url)
         target_dir = output_dir or self.download_dir
         os.makedirs(target_dir, exist_ok=True)
 
-        target_filename = Path(filename).name if filename else None
+        target_filename = _sanitize_filename(filename)
         if not target_filename:
-            extracted_name = Path(urlparse(url).path).name
+            extracted_name = Path(urlparse(safe_url).path).name
             if extracted_name:
-                unquoted = unquote(extracted_name)
-                target_filename = Path(unquoted).name or None
+                target_filename = _sanitize_filename(unquote(extracted_name))
 
-        cmd = self.build_command(url, output_dir=target_dir, filename=target_filename)
+        cmd = self.build_command(safe_url, output_dir=target_dir, filename=target_filename)
         proc = await asyncio.create_subprocess_exec(
             *cmd,
             stdout=asyncio.subprocess.PIPE,

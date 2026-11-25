@@ -11,7 +11,8 @@ export function escapeHtml(str: string | null | undefined): string {
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 export function sortJobsNewestFirst(jobs: DownloadJob[]): DownloadJob[] {
@@ -89,7 +90,10 @@ export function renderJobCardHtml(job: DownloadJob, currentQueueScope: QueueScop
   const displayName = resolveDisplayFilename(job);
   const errorHtml = job.error ? `<div class="job-error">⚠️ ${escapeHtml(job.error)}</div>` : "";
 
-  const pct = typeof job.progress_percent === "number" ? job.progress_percent : 0;
+  const rawPct = Number(job.progress_percent);
+  const pct = Number.isFinite(rawPct) ? Math.min(Math.max(rawPct, 0), 100) : 0;
+  const completedFiles = Number(job.completed_files) || 0;
+  const totalFiles = Number(job.total_files) || 1;
   const showBar = ["downloading", "extracting", "completed"].includes(status);
   const speedHtml =
     status === "downloading" && job.download_speed ? ` • ⚡ ${escapeHtml(job.download_speed)}` : "";
@@ -97,10 +101,10 @@ export function renderJobCardHtml(job: DownloadJob, currentQueueScope: QueueScop
   const progressBarHtml = showBar
     ? `
       <div class="progress-container">
-        <div class="progress-bar" style="width: ${Math.min(pct, 100)}%;"></div>
+        <div class="progress-bar" style="width: ${pct}%;"></div>
       </div>
       <div class="progress-info">
-        <span>${job.completed_files || 0} / ${job.total_files || 1} file(s)${speedHtml}</span>
+        <span>${completedFiles} / ${totalFiles} file(s)${speedHtml}</span>
         <span>${pct}%</span>
       </div>
     `

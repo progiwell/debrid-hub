@@ -9,7 +9,7 @@
     "build:ext": "node scripts/build_frontend.mjs --target=ext",
     "build:server": "node scripts/build_frontend.mjs --target=server",
     "build": "npm run build:ext && npm run build:server",
-    "test:ext": "node extension/tests/test_url_parser.js && node extension/tests/test_popup_filter.js && node extension/tests/test_settings_ux.js && node extension/tests/test_content.js",
+    "test:ext": "node extension/tests/test_url_parser.js && node extension/tests/test_popup_filter.js && node extension/tests/test_settings_ux.js && node extension/tests/test_content.js && node extension/tests/test_security_xss.js",
     "watch": "node scripts/build_frontend.mjs --watch"
   },
   "devDependencies": {
