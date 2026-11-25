@@ -36,7 +36,7 @@ debrid-hub/
 ├── .github/
 │   └── workflows/
 │       ├── docker-publish.yml       # Multi-arch GHCR Docker image build & publish
-│       ├── gemini_pr_reviewer.yml   # Automated Gemini PR review against linked GitHub Issue
+│       ├── pr_council.yml           # Automated PR Council review against linked GitHub Issue
 │       └── tests.yml                # Frontend build/tests & Pytest CI runner
 ├── server/                          # [FOLDER 1] Lean Server Docker Backend (Python FastAPI + Aria2c + Unrar)
 │   ├── Dockerfile                   # Multi-stage Alpine container (node:22-alpine UI builder → python:3.11-alpine runtime)
@@ -216,7 +216,7 @@ When implementing an issue, modify **only** the target files assigned to that is
   ```
 - **Offline Unit Tests**: All external HTTP calls (`httpx`) and subprocess executions (`aria2c`, `unrar`) **must** be mocked in `server/tests/` so tests run deterministically offline in `<1s`.
 - **PR Lifecycle**: Follow `/issue-lifecycle` (mark `--add-label "status: in-progress"`, include `Fixes #<ID>` in PR description) and `/ci-pr-reviewer` for automated code reviews.
-- **Mandatory Automated PR Review Approval Gate**: Never merge a PR immediately after submission. Always wait for the `Gemini PR Reviewer` workflow to complete and verify `gh api repos/progiwell/debrid-hub/pulls/<PR_NUMBER>/reviews --jq '.[-1].state'` returns `APPROVED`. If the review is `CHANGES_REQUESTED`, fix all issues in the worktree, push updates, and ensure re-review approval before merging.
+- **Mandatory Automated PR Review Approval Gate**: Never merge a PR immediately after submission. Always wait for the `PR Council` workflow to complete and verify `gh api repos/progiwell/debrid-hub/pulls/<PR_NUMBER>/reviews --jq '.[-1].state'` returns `APPROVED`. If the review is `CHANGES_REQUESTED`, fix all issues in the worktree, push updates, and ensure re-review approval before merging.
 - **Post-Merge Cleanup**:
   ```bash
   git worktree remove scratch/issue<ID>
