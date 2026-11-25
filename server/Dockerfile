@@ -19,7 +19,8 @@ LABEL org.opencontainers.image.source="https://github.com/progiwell/debrid-hub"
 LABEL org.opencontainers.image.licenses="GPL-3.0-or-later"
 
 # Install lightweight runtime utilities: aria2c, 7zip, and official unrar
-RUN apk add --no-cache \
+RUN apk upgrade --no-cache \
+    && apk add --no-cache \
     aria2 \
     7zip \
     ca-certificates \
@@ -35,7 +36,8 @@ RUN apk add --no-cache \
 WORKDIR /app
 
 COPY server/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt \
+    && pip uninstall -y setuptools wheel
 
 COPY server/app/ ./app/
 COPY --from=ui-builder /src/server/app/static/dashboard.js ./app/static/dashboard.js
